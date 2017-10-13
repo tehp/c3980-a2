@@ -2,11 +2,13 @@
 #include "resource.h"
 #include <stdio.h>
 #include <iostream>
-#include <string>
+#include <string.h>
 #include <conio.h>
 #include <io.h>
 #include "SkyeTekAPI.h"
 #include "SkyeTekProtocol.h"
+#include <chrono>
+
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -29,23 +31,47 @@ static unsigned yPos = 0;
 bool start;
 HWND hwnd;
 
+DWORD thread;
+HANDLE handle;
+
+LPSKYETEK_DEVICE *devices = NULL;
+LPSKYETEK_READER *readers = NULL;
+
+LPCSTR tags[10];
+
 SKYETEK_STATUS ReadTagData(LPSKYETEK_READER lpReader, LPSKYETEK_TAG lpTag);
 
-DWORD WINAPI ListenThread(HWND hwnd)
-{
+unsigned char TagFoundCallback(LPSKYETEK_TAG lpTag, void *user) {
+	HDC hdc = GetDC(hwnd);
+
+	if (lpTag == NULL) {
+		TextOut(hdc, 0, yPos * 20, "                                                                                                   ", 100);
+
+		return 0;
+	}
+	tags[0] = lpTag->friendly;
+
+	TextOut(hdc, 0, yPos * 20, lpTag->friendly, 100);
+	//yPos++;
+	SkyeTek_FreeTag(lpTag);
 	return 0;
 }
 
 
-int ReadTag(LPSKYETEK_READER *readers) {
-	int i = 0;
+DWORD WINAPI ListenThread(LPVOID n)
+{
 	HDC hdc = GetDC(hwnd);
+	SKYETEK_STATUS st;
+
+	/*int numTags = 0;
 
 	while (1) {
 		if (start) {
+			yPos = 0;
 			lpTags = NULL;
 			tagCount = 0;
 			SKYETEK_STATUS st = SkyeTek_GetTags(readers[0], AUTO_DETECT, &lpTags, &tagCount);
+
 			if (st != SKYETEK_SUCCESS) {
 				continue;
 			}
@@ -56,28 +82,59 @@ int ReadTag(LPSKYETEK_READER *readers) {
 				continue;
 			}
 
-			TextOut(hdc, 0, yPos * 20, (*lpTags)->friendly, 100);
+			if (tagCount == 0) {
+				TextOut(hdc, 0, yPos * 20, "nothing", 100);
+			}
+			else {
+				TextOut(hdc, 0, yPos * 20, (*lpTags)->friendly, 100);
+			}
 			yPos++;
 			SkyeTek_FreeTags(readers[0], lpTags, tagCount);
-			i++;
+		}
+	}
+
+	return 0;*/
+
+	// NEW ATTEMPT :)
+
+	while (1) {
+		st = SkyeTek_SelectTags(readers[0], AUTO_DETECT, TagFoundCallback, 0, 1, NULL);
+		if (st != SKYETEK_SUCCESS) {
+			continue;
+		}
+		if (st == SKYETEK_TIMEOUT) {
+			continue;
+		}
+		if (lpTags == NULL) {
+			continue;
 		}
 	}
 
 	return 0;
+
 }
+
+
 
 // Discovers devices as well as the reader
 int Discover(HWND hwnd) {
-	LPSKYETEK_DEVICE *devices = NULL;
-	LPSKYETEK_READER *readers = NULL;
+
 	DWORD threadID;
+	HDC hdc = GetDC(hwnd);
+
+	TextOut(hdc, 0, 0, "starting", 8);
+
 
 	numDevices = SkyeTek_DiscoverDevices(&devices);
 	numReaders = SkyeTek_DiscoverReaders(devices, numDevices, &readers);
 
+
+
 	if (numReaders != 0) {
-		ReadTag(readers);
-		//CreateThread(NULL, 0, ListenThread, 0, 0, &threadID);
+		TextOut(hdc, 0, 0, "readers found :)", 16);
+
+		//ReadTag(readers);
+		CreateThread(NULL, 0, &ListenThread, 0, 0, &thread);
 	}
 	
 	return 0;
@@ -96,6 +153,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		case ID_START:
 			start = true;
 			Discover(hwnd);
+			//handle = CreateThread(NULL, 0, &ListenThread, 0, 0, &thread);
 			break;
 		case ID_STOP:
 			start = false;
@@ -138,10 +196,10 @@ int WinMain(HINSTANCE hInst, HINSTANCE hprevInstance, LPSTR lspzCmdParam, int nC
 		"term",
 		"term",
 		WS_SYSMENU,
-		0, // X coord
-		0, // Y coord DONT MAKE THIS 0, INVIS ON DUAL MONITOR
-		1900, // width
-		1000, // height
+		110, // X coord
+		110, // Y coord DONT MAKE THIS 0, INVIS ON DUAL MONITOR
+		500, // width
+		300, // height
 		NULL,
 		NULL,
 		hInst,

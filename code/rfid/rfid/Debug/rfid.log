@@ -1,6 +1,11 @@
-﻿Build started 10/11/2017 6:43:57 PM.
+﻿Build started 10/13/2017 4:34:33 PM.
      1>Project "F:\rfid\rfid\rfid.vcxproj" on node 2 (Build target(s)).
-     1>Link:
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\" /Fd"Debug\vc140.pdb" /Gd /TP /analyze- /errorReport:prompt Source.cpp
+         Source.cpp
+     1>f:\rfid\rfid\source.cpp(122): warning C4101: 'threadID': unreferenced local variable
+     1>f:\rfid\rfid\source.cpp(173): warning C4007: 'WinMain': must be '__stdcall'
+       Link:
          C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"F:\rfid\Debug\rfid.exe" /INCREMENTAL /NOLOGO stapi.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /Debug /PDB:"F:\rfid\Debug\rfid.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"F:\rfid\Debug\rfid.lib" /MACHINE:X86 /VERBOSE Debug\rfid.res
          Debug\Source.obj
          Generating non-SAFESEH image.
@@ -13,4 +18,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:00.78
+Time Elapsed 00:00:03.17
