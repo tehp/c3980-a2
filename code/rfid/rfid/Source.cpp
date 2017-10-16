@@ -7,8 +7,6 @@
 #include <io.h>
 #include "SkyeTekAPI.h"
 #include "SkyeTekProtocol.h"
-#include <chrono>
-
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -41,6 +39,25 @@ LPCSTR tags[10];
 
 SKYETEK_STATUS ReadTagData(LPSKYETEK_READER lpReader, LPSKYETEK_TAG lpTag);
 
+/*------------------------------------------------------------------------------------------------------------------
+ -- FUNCTION: TagFoundCallback
+ --
+ -- DATE: Oct 16, 2017
+ --
+ -- REVISIONS: N/A
+ --
+ -- DESIGNER: Mackenzie Craig
+ --
+ -- PROGRAMMER: Mackenzie Craig
+ --
+ -- INTERFACE: unsigned char TagFoundCallback(LPSKYETEK_TAG lpTag, void *user)
+ -- LPSKYETEK_TAG lpTag: A tag that was found.
+ --
+ -- RETURNS: 0
+ --
+ -- NOTES:
+ -- This function is a callback that is called by the SkyeTek_SelectTags API call in the ListenThread. This function prints the names of the tags that are recognized in the previously mentioned functions.
+ ----------------------------------------------------------------------------------------------------------------------*/
 unsigned char TagFoundCallback(LPSKYETEK_TAG lpTag, void *user) {
 	HDC hdc = GetDC(hwnd);
 
@@ -52,50 +69,32 @@ unsigned char TagFoundCallback(LPSKYETEK_TAG lpTag, void *user) {
 	tags[0] = lpTag->friendly;
 
 	TextOut(hdc, 0, yPos * 20, lpTag->friendly, 100);
-	//yPos++;
 	SkyeTek_FreeTag(lpTag);
 	return 0;
 }
 
-
+/*------------------------------------------------------------------------------------------------------------------
+ -- FUNCTION: ListenThread
+ --
+ -- DATE: Oct 16, 2017
+ --
+ -- REVISIONS: N/A
+ --
+ -- DESIGNER: Mackenzie Craig
+ --
+ -- PROGRAMMER: Mackenzie Craig
+ --
+ -- INTERFACE: DWORD WINAPI ListenThread(LPVOID n)
+ --
+ -- RETURNS: 0
+ --
+ -- NOTES:
+ -- A thread that listens for tags. When found, it calls the callback function TagFoundCallback, which handles the printing of the tag name.
+ ----------------------------------------------------------------------------------------------------------------------*/
 DWORD WINAPI ListenThread(LPVOID n)
 {
 	HDC hdc = GetDC(hwnd);
 	SKYETEK_STATUS st;
-
-	/*int numTags = 0;
-
-	while (1) {
-		if (start) {
-			yPos = 0;
-			lpTags = NULL;
-			tagCount = 0;
-			SKYETEK_STATUS st = SkyeTek_GetTags(readers[0], AUTO_DETECT, &lpTags, &tagCount);
-
-			if (st != SKYETEK_SUCCESS) {
-				continue;
-			}
-			if (st == SKYETEK_TIMEOUT) {
-				continue;
-			}
-			if (lpTags == NULL) {
-				continue;
-			}
-
-			if (tagCount == 0) {
-				TextOut(hdc, 0, yPos * 20, "nothing", 100);
-			}
-			else {
-				TextOut(hdc, 0, yPos * 20, (*lpTags)->friendly, 100);
-			}
-			yPos++;
-			SkyeTek_FreeTags(readers[0], lpTags, tagCount);
-		}
-	}
-
-	return 0;*/
-
-	// NEW ATTEMPT :)
 
 	while (1) {
 		st = SkyeTek_SelectTags(readers[0], AUTO_DETECT, TagFoundCallback, 0, 1, NULL);
@@ -114,9 +113,25 @@ DWORD WINAPI ListenThread(LPVOID n)
 
 }
 
-
-
-// Discovers devices as well as the reader
+/*------------------------------------------------------------------------------------------------------------------
+ -- FUNCTION: Discover
+ --
+ -- DATE: Oct 16, 2017
+ --
+ -- REVISIONS: N/A
+ --
+ -- DESIGNER: Mackenzie Craig
+ --
+ -- PROGRAMMER: Mackenzie Craig
+ --
+ -- INTERFACE: int Discover(HWND hwnd)
+ -- HWND hwnd: The window handle.
+ --
+ -- RETURNS: 0
+ --
+ -- NOTES:
+ -- This function discovers all devices using SkyeTek_DiscoverDevices, and then discovers readers using SkyeTek_DiscoverReaders. Once a reader is discovered, creates a thread.
+ ----------------------------------------------------------------------------------------------------------------------*/
 int Discover(HWND hwnd) {
 
 	DWORD threadID;
@@ -124,22 +139,43 @@ int Discover(HWND hwnd) {
 
 	TextOut(hdc, 0, 0, "starting", 8);
 
-
 	numDevices = SkyeTek_DiscoverDevices(&devices);
 	numReaders = SkyeTek_DiscoverReaders(devices, numDevices, &readers);
-
-
 
 	if (numReaders != 0) {
 		TextOut(hdc, 0, 0, "readers found :)", 16);
 
-		//ReadTag(readers);
 		CreateThread(NULL, 0, &ListenThread, 0, 0, &thread);
-	}
+    } else {
+        TextOut(hdc, 0, 0, "err, no reader", 14);
+    }
 	
 	return 0;
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+ -- FUNCTION: WndProc
+ --
+ -- DATE: Oct 16, 2017
+ --
+ -- REVISIONS: N/A
+ --
+ -- DESIGNER: Mackenzie Craig
+ --
+ -- PROGRAMMER: Mackenzie Craig
+ --
+ -- INTERFACE: LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
+ -- HWND hwnd: The window handle.
+ -- UINT Message: Default message.
+ -- WPARAM wParam
+ -- LPARAM lParam
+ --
+ -- RETURNS: 0
+ --
+ -- NOTES:
+ -- This function contains the switch statement that handles starting, stopping, and exiting the program.
+ -- Start begins discovery of devices and readers, and sets start to true. Stop sets start to false.
+ ----------------------------------------------------------------------------------------------------------------------*/
 LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
 	switch (Message)
@@ -153,7 +189,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		case ID_START:
 			start = true;
 			Discover(hwnd);
-			//handle = CreateThread(NULL, 0, &ListenThread, 0, 0, &thread);
 			break;
 		case ID_STOP:
 			start = false;
@@ -169,6 +204,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+/*------------------------------------------------------------------------------------------------------------------
+ -- FUNCTION: WinMain
+ --
+ -- DATE: Oct 16, 2017
+ --
+ -- REVISIONS: N/A
+ --
+ -- DESIGNER: Mackenzie Craig
+ --
+ -- PROGRAMMER: Mackenzie Craig
+ --
+ -- INTERFACE: WinMain(HINSTANCE hInst, HINSTANCE hprevInstance, LPSTR lspzCmdParam, int nCmdShow)
+ --
+ -- RETURNS: Msg.wParam
+ --
+ -- NOTES:
+ -- Main method. Sets the window configuration properties and createsthe window.
+ ----------------------------------------------------------------------------------------------------------------------*/
 int WinMain(HINSTANCE hInst, HINSTANCE hprevInstance, LPSTR lspzCmdParam, int nCmdShow)
 {
 	MSG Msg;
