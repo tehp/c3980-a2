@@ -69,8 +69,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>F:\rfid\api;$(IncludePath)</IncludePath>
-    <LibraryPath>F:\rfid\api;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)api;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)api;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
