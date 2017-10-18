@@ -126,17 +126,17 @@ int Discover(HWND hwnd) {
 
 	HDC hdc = GetDC(hwnd);
 
-	TextOut(hdc, 0, 0, "Discovering reader...", 20);
+	TextOut(hdc, 0, 0, "Discovering reader...", 22);
 
 	numDevices = SkyeTek_DiscoverDevices(&devices);
 	numReaders = SkyeTek_DiscoverReaders(devices, numDevices, &readers);
 
 	if (numReaders != 0) {
-		TextOut(hdc, 0, 0, "readers found :)", 17);
+		TextOut(hdc, 0, 0, "readers found :)             ", 30);
 
 		CreateThread(NULL, 0, &ListenThread, 0, 0, &thread);
     } else {
-        TextOut(hdc, 0, 0, "err, no reader", 15);
+        TextOut(hdc, 0, 0, "err, no reader               ", 30);
     }
 	
 	return 0;
@@ -178,12 +178,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		case ID_START:
 			readTag = true;
 			if (thread == NULL)
+			{
 				Discover(hwnd);
+			}
 			break;
 		case ID_STOP:
 			readTag = false;
 			HDC hdc = GetDC(hwnd);
-			Sleep(100);
+			Sleep(50);
 			TextOut(hdc, 0, yPos * 20, "                                                                                                   ", 100);
 
 			break;
