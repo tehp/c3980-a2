@@ -8,36 +8,18 @@
 #include "SkyeTekAPI.h"
 #include "SkyeTekProtocol.h"
 
-LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); //The window process declaration
 
-OVERLAPPED osWrite;
-BOOL initialized;
+LPSKYETEK_DEVICE *devices = NULL; //pointer to device
+LPSKYETEK_READER *readers = NULL; //pointer to reader
 
-HANDLE hComm;
-HANDLE hThread;
-BOOL Status;
-DCB dcb = { 0 };
-COMMCONFIG	cc;
-HANDLE monitor = GetStdHandle(STD_OUTPUT_HANDLE);
-LPSKYETEK_TAG *lpTags;
+static unsigned yPos = 0; //keeps track of the y position on the window
 
-unsigned short tagCount;
-unsigned int numDevices = NULL;
-unsigned int numReaders = NULL;
-static unsigned yPos = 0;
+bool readTag; //This sets the reader to read or not to read
 
-bool start;
-HWND hwnd;
+HWND hwnd; //The windows handle
 
-DWORD thread;
-HANDLE handle;
-
-LPSKYETEK_DEVICE *devices = NULL;
-LPSKYETEK_READER *readers = NULL;
-
-LPCSTR tags[10];
-
-SKYETEK_STATUS ReadTagData(LPSKYETEK_READER lpReader, LPSKYETEK_TAG lpTag);
+DWORD thread; //The listening thread
 
 /*------------------------------------------------------------------------------------------------------------------
  -- FUNCTION: TagFoundCallback
@@ -46,9 +28,9 @@ SKYETEK_STATUS ReadTagData(LPSKYETEK_READER lpReader, LPSKYETEK_TAG lpTag);
  --
  -- REVISIONS: N/A
  --
- -- DESIGNER: Mackenzie Craig
+ -- DESIGNER: Mackenzie Craig, Angus Lam
  --
- -- PROGRAMMER: Mackenzie Craig
+ -- PROGRAMMER: Mackenzie Craig, Angus Lam
  --
  -- INTERFACE: unsigned char TagFoundCallback(LPSKYETEK_TAG lpTag, void *user)
  -- LPSKYETEK_TAG lpTag: A tag that was found.
@@ -66,7 +48,6 @@ unsigned char TagFoundCallback(LPSKYETEK_TAG lpTag, void *user) {
 
 		return 0;
 	}
-	tags[0] = lpTag->friendly;
 
 	TextOut(hdc, 0, yPos * 20, lpTag->friendly, 100);
 	SkyeTek_FreeTag(lpTag);
@@ -80,9 +61,9 @@ unsigned char TagFoundCallback(LPSKYETEK_TAG lpTag, void *user) {
  --
  -- REVISIONS: N/A
  --
- -- DESIGNER: Mackenzie Craig
+ -- DESIGNER: Mackenzie Craig, Angus Lam
  --
- -- PROGRAMMER: Mackenzie Craig
+ -- PROGRAMMER: Mackenzie Craig, Angus Lam
  --
  -- INTERFACE: DWORD WINAPI ListenThread(LPVOID n)
  --
@@ -93,19 +74,26 @@ unsigned char TagFoundCallback(LPSKYETEK_TAG lpTag, void *user) {
  ----------------------------------------------------------------------------------------------------------------------*/
 DWORD WINAPI ListenThread(LPVOID n)
 {
-	HDC hdc = GetDC(hwnd);
-	SKYETEK_STATUS st;
+	LPSKYETEK_TAG  *lpTags = NULL;
+	SKYETEK_STATUS  st;
+	HDC             hdc = GetDC(hwnd);
 
 	while (1) {
-		st = SkyeTek_SelectTags(readers[0], AUTO_DETECT, TagFoundCallback, 0, 1, NULL);
-		if (st != SKYETEK_SUCCESS) {
-			continue;
-		}
-		if (st == SKYETEK_TIMEOUT) {
-			continue;
-		}
-		if (lpTags == NULL) {
-			continue;
+		if (readTag)
+		{
+			st = SkyeTek_SelectTags(readers[0], AUTO_DETECT, TagFoundCallback, 0, 1, NULL);
+			if (st != SKYETEK_SUCCESS)
+			{
+				continue;
+			}
+			if (st == SKYETEK_TIMEOUT)
+			{
+				continue;
+			}
+			if (lpTags == NULL)
+			{
+				continue;
+			}
 		}
 	}
 
@@ -120,9 +108,9 @@ DWORD WINAPI ListenThread(LPVOID n)
  --
  -- REVISIONS: N/A
  --
- -- DESIGNER: Mackenzie Craig
+ -- DESIGNER: Mackenzie Craig, Angus Lam
  --
- -- PROGRAMMER: Mackenzie Craig
+ -- PROGRAMMER: Mackenzie Craig, Angus Lam
  --
  -- INTERFACE: int Discover(HWND hwnd)
  -- HWND hwnd: The window handle.
@@ -133,21 +121,22 @@ DWORD WINAPI ListenThread(LPVOID n)
  -- This function discovers all devices using SkyeTek_DiscoverDevices, and then discovers readers using SkyeTek_DiscoverReaders. Once a reader is discovered, creates a thread.
  ----------------------------------------------------------------------------------------------------------------------*/
 int Discover(HWND hwnd) {
+	unsigned int numDevices = NULL;
+	unsigned int numReaders = NULL;
 
-	DWORD threadID;
 	HDC hdc = GetDC(hwnd);
 
-	TextOut(hdc, 0, 0, "starting", 8);
+	TextOut(hdc, 0, 0, "Discovering reader...", 20);
 
 	numDevices = SkyeTek_DiscoverDevices(&devices);
 	numReaders = SkyeTek_DiscoverReaders(devices, numDevices, &readers);
 
 	if (numReaders != 0) {
-		TextOut(hdc, 0, 0, "readers found :)", 16);
+		TextOut(hdc, 0, 0, "readers found :)", 17);
 
 		CreateThread(NULL, 0, &ListenThread, 0, 0, &thread);
     } else {
-        TextOut(hdc, 0, 0, "err, no reader", 14);
+        TextOut(hdc, 0, 0, "err, no reader", 15);
     }
 	
 	return 0;
@@ -160,9 +149,9 @@ int Discover(HWND hwnd) {
  --
  -- REVISIONS: N/A
  --
- -- DESIGNER: Mackenzie Craig
+ -- DESIGNER: Mackenzie Craig, Angus Lam
  --
- -- PROGRAMMER: Mackenzie Craig
+ -- PROGRAMMER: Mackenzie Craig, Angus Lam
  --
  -- INTERFACE: LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
  -- HWND hwnd: The window handle.
@@ -187,15 +176,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			PostQuitMessage(0);
 			break;
 		case ID_START:
-			start = true;
-			Discover(hwnd);
+			readTag = true;
+			if (thread == NULL)
+				Discover(hwnd);
 			break;
 		case ID_STOP:
-			start = false;
+			readTag = false;
+			HDC hdc = GetDC(hwnd);
+			Sleep(100);
+			TextOut(hdc, 0, yPos * 20, "                                                                                                   ", 100);
+
 			break;
 		}
 		break;
 	case WM_DESTROY:
+		SkyeTek_FreeReader(*readers);
+		SkyeTek_FreeDevice(*devices);
 		PostQuitMessage(0);
 		break;
 	default:
@@ -211,9 +207,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
  --
  -- REVISIONS: N/A
  --
- -- DESIGNER: Mackenzie Craig
+ -- DESIGNER: Mackenzie Craig, Angus Lam
  --
- -- PROGRAMMER: Mackenzie Craig
+ -- PROGRAMMER: Mackenzie Craig, Angus Lam
  --
  -- INTERFACE: WinMain(HINSTANCE hInst, HINSTANCE hprevInstance, LPSTR lspzCmdParam, int nCmdShow)
  --
@@ -222,25 +218,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
  -- NOTES:
  -- Main method. Sets the window configuration properties and createsthe window.
  ----------------------------------------------------------------------------------------------------------------------*/
-int WinMain(HINSTANCE hInst, HINSTANCE hprevInstance, LPSTR lspzCmdParam, int nCmdShow)
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance, LPSTR lspzCmdParam, int nCmdShow)
 {
 	MSG Msg;
 	WNDCLASSEX Wcl;
 
-	Wcl.cbSize = sizeof(WNDCLASSEX);
-	Wcl.style = 0;
-	Wcl.hIcon = LoadIcon(NULL, IDI_APPLICATION); // large icon 
+	Wcl.cbSize  = sizeof(WNDCLASSEX);
+	Wcl.style   = 0;
+	Wcl.hIcon   = LoadIcon(NULL, IDI_APPLICATION); // large icon 
 	Wcl.hIconSm = NULL; // use small version of large icon
 	Wcl.hCursor = LoadCursor(NULL, IDC_ARROW);  // cursor style
 
-	Wcl.lpfnWndProc = WndProc; // window function
-	Wcl.hInstance = hInst; // handle to this instance
+	Wcl.lpfnWndProc   = WndProc; // window function
+	Wcl.hInstance     = hInst; // handle to this instance
 	Wcl.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH); //white background
 	Wcl.lpszClassName = "term"; // window class name
 
 	Wcl.lpszMenuName = MAKEINTRESOURCE(IDR_MENU1); // no class menu 
-	Wcl.cbClsExtra = 0;      // no extra memory needed
-	Wcl.cbWndExtra = 0;
+	Wcl.cbClsExtra   = 0;      // no extra memory needed
+	Wcl.cbWndExtra   = 0;
 	RegisterClassEx(&Wcl);
 
 	ShowWindow(hwnd, nCmdShow);
